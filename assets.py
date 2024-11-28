@@ -45,7 +45,7 @@ explosion_image = pygame.image.load("images/explosion_alpha.png").convert_alpha(
 #SOUNDS
 
 # pygame.mixer.music.load("sound/soundtrack.mp3")
-soundtrack_path="sound/soundtrack.mp3"
+soundtrack_path="sound/soundtrack.ogg"
 
 missile_sound = pygame.mixer.Sound("sound/missile_sound.ogg")
 missile_sound.set_volume(.5)
