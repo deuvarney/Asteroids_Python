@@ -1,13 +1,16 @@
 import pygame
-# from pygame.locals import *
-from typing import List
 from pygame import Surface
+from typing import List
+from sys import exit
+from ship import Ship
+from sprite import Sprite
 
+import random
+from utils import *
 
-# from timer_decorator import timer_decorator
+import asyncio
 
 pygame.init()
-
 
 # globals for user interface
 WIDTH = 800
@@ -18,39 +21,16 @@ time = 0
 started = False
 
 frame: Surface = pygame.display.set_mode((WIDTH,HEIGHT), 0, 32)
-
-# COORDINATE_TUPLE = tuple[int, int]
-COORDINATE = List[int]
-SIZE= COORDINATE
-
-from sys import exit
-
-from ship import Ship
-from sprite import Sprite
-from image_info import ImageInfo
+# frame: Surface = pygame.display.set_mode((WIDTH,HEIGHT))
+# frame: Surface = pygame.display.set_mode((WIDTH,HEIGHT), pygame.DOUBLEBUF, 32)
 
 from assets import *
 
-# from constants import *
-
-# implementation of Spaceship - program template for RiceRocks
-
-import random
-from utils import *
-
-import asyncio
-
+COORDINATE = List[int]
+SIZE= COORDINATE
 
 pygame.mixer.music.load(soundtrack_path)
-
-
-
-
-# frame: Surface = pygame.display.set_mode((WIDTH,HEIGHT))
-# frame: Surface = pygame.display.set_mode((WIDTH,HEIGHT), pygame.DOUBLEBUF, 32)
 clock = pygame.time.Clock()
-
-
 
 # key handlers to control ship   
 def keydown(event):
@@ -59,17 +39,9 @@ def keydown(event):
     elif event.key == pygame.K_RIGHT:
         my_ship.increment_angle_vel()
     elif event.key == pygame.K_UP:
-        my_ship.set_thrust(True)
+        my_ship.set_thrust(True, ship_thrust_sound)
     elif event.key == pygame.K_SPACE:
-        missile_details = my_ship.shoot()
-        # forward = angle_to_vector(my_ship.angle)
-        # missile_pos = [my_ship.pos[0] + my_ship.image_center[0] - (missile_info.center[0]),
-        #                 my_ship.pos[1] + my_ship.image_center[1] - (missile_info.center[1]) ]
-
-        # missile_vel = [
-        #     my_ship.vel[0] + 6 * forward[0],
-        #     my_ship.vel[1] + 6 * forward[1]
-        #     ]
+        missile_details = my_ship.shoot(missile_info)
         missile_group.add(Sprite(missile_details.position, missile_details.velocity, missile_details.angle, missile_details.angle_velocity, missile_image, missile_info, missile_sound))
         
 def keyup(event):
@@ -78,16 +50,19 @@ def keyup(event):
     elif event.key == pygame.K_RIGHT:
         my_ship.decrement_angle_vel()
     elif event.key == pygame.K_UP:
-        my_ship.set_thrust(False)
+        my_ship.set_thrust(False, ship_thrust_sound)
         
 # mouseclick handlers that reset UI and conditions whether splash image is drawn
 def click(pos):
     global started, lives, score
+    
+    if started:
+        return
     center = [WIDTH / 2, HEIGHT / 2]
     size = splash_info.get_size()
     inwidth = (center[0] - size[0] / 2) < pos[0] < (center[0] + size[0] / 2)
     inheight = (center[1] - size[1] / 2) < pos[1] < (center[1] + size[1] / 2)
-    if (not started) and inwidth and inheight:
+    if inwidth and inheight:
         started = True
         lives = 3
         score = 0
@@ -106,11 +81,10 @@ def draw(frame: Surface):
     frame.blit(nebula_image, (0,0))
     
     
-    # TODO IS this being drawn twice?
+    # Create continuous debris background
     frame.blit(debris_image, (wtime - WIDTH, 0) )
     frame.blit(debris_image, (wtime , 0))
    
-
     
     # draw UI
     frame.blit(text.render('Lives', True, (255,255,255)),(50,50))
@@ -118,16 +92,15 @@ def draw(frame: Surface):
     frame.blit(text.render(str(lives), True, (255,255,255)),(50,80))
     frame.blit(text.render(str(score), True, (255,255,255)),(680,80))
     
-    # draw ship and sprites
-    my_ship.draw(frame)
-    
     # update ship and sprites
     my_ship.update()
+    # draw ship and sprites
+    frame.blit(*my_ship.draw())
 
     process_sprite_group(rock_group, frame)
     process_sprite_group(missile_group, frame)
     process_sprite_group(explosion_group, frame)
-    score += group_group_collide(missile_group, rock_group)
+    score += rock_missile_group_collide(missile_group, rock_group)
 
     if group_collide(rock_group, my_ship):
         lives -= 1
@@ -150,14 +123,14 @@ def draw(frame: Surface):
 #process sprite group helper function
 def process_sprite_group(the_set: set[Sprite], canvas: Surface):
     for the_object in the_set.copy():
-        the_object.draw(canvas)
+        canvas.blit(*the_object.draw())   
         if the_object.update():
-            the_set.discard(the_object)    
+            the_set.discard(the_object)
         
 # timer handler that spawns a rock    
 def rock_spawner():
     global rock_group
-    if len(rock_group) <= 2:# and started:
+    if len(rock_group) <= 2:
         rock_pos = [random.randrange(0, WIDTH), random.randrange(0, HEIGHT)]
         rock_vel = [
             random.random() * .6 - .3, 
@@ -168,18 +141,20 @@ def rock_spawner():
         new_rock = Sprite(rock_pos, rock_vel, 0, rock_avel, new_asteroid_image, asteroid_info)
         if dist(new_rock.pos, my_ship.pos) > 100:
             rock_group.add(new_rock)
+        else:
+            rock_spawner()
         
         
 def group_collide(group, other_object):
     for obj in set(group):
         if obj.collide(other_object):
             group.discard(obj)
-            centered_explostion_pos = [other_object.pos_center[0] - explosion_info.get_center()[0], other_object.pos_center[1] - explosion_info.get_center()[1]]
-            explosion_group.add(Sprite(centered_explostion_pos, other_object.vel, 0, 0, explosion_image, explosion_info, explosion_sound))
+            centered_explosion_pos = [other_object.pos_center[0] - explosion_info.get_center()[0], other_object.pos_center[1] - explosion_info.get_center()[1]]
+            explosion_group.add(Sprite(centered_explosion_pos, other_object.vel, 0, 0, explosion_image, explosion_info, explosion_sound))
             return True
     return False
 
-def group_group_collide(missile_group, rock_group):
+def rock_missile_group_collide(missile_group, rock_group):
     number = 0
     for rock in set(rock_group):
         if group_collide(missile_group, rock):
@@ -187,14 +162,13 @@ def group_group_collide(missile_group, rock_group):
             number += 1
     return number
 
-# initialize stuff
 
-# initialize ship and two sprites
+# initialize ship and sprites
 
 SPAWN_ROCK_EVENT = pygame.USEREVENT + 1
 pygame.time.set_timer(SPAWN_ROCK_EVENT, 2000)
 
-my_ship = Ship([WIDTH * .5 , HEIGHT * .5], [0.0, 0.0], 0, ship_image_inactive, ship_image_active, ship_info)
+my_ship = Ship([int(WIDTH * .5), int(HEIGHT * .5)], [0.0, 0.0], 0, ship_image_inactive, ship_image_active, ship_info)
 
 rock_group: set[Sprite] = set()
 missile_group: set[Sprite] = set()
@@ -203,18 +177,16 @@ explosion_group: set[Sprite] = set()
     
 # Define the dimensions of each item
 
-item_width = 128
-item_height = 128
+item_width,item_height = explosion_info.get_size()
 # Create a variable to keep track of the current item index
-current_party_idx = 0
+random_explosion_pos = 0
 
 
 async def main():
 
-    global current_party_idx
+    global random_explosion_pos
 
     while True:
-
         # start_time = time.time()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -232,11 +204,12 @@ async def main():
         draw(frame)
 
         # Draw random explosion
-        explostion_image_frame = explosion_image.subsurface(
-            (current_party_idx * (item_width), 0, item_width, item_height))
-        frame.blit(explostion_image_frame, (0-(item_width * .5), 0 -(item_height/2)))
+        # TODO: Organize this better
+        explosion_image_frame = explosion_image.subsurface(
+            (random_explosion_pos * (item_width), 0, item_width, item_height))
+        frame.blit(explosion_image_frame, (0-(item_width * .5), 0 -(item_height*.5)))
 
-        current_party_idx = (current_party_idx + 1) % 24
+        random_explosion_pos = (random_explosion_pos + 1) % 24
         
         clock.tick(60)
         pygame.display.update()
