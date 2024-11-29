@@ -2,25 +2,27 @@
 import math
 from pygame import transform
 
+from constants import COORDINATE
 
 # helper functions to handle 2d transformations
-def angle_to_vector(angle):
-    
+
+def angle_to_vector(angle: int, radius_offset: int = 1, starting_position: COORDINATE = [0,0]):
     """
     Converts an angle in degrees to a 2D unit vector.
 
-    This function takes an angle in degrees, converts it to radians, and then computes
-    the corresponding unit vector in 2D space. The angle is assumed to be measured 
-    clockwise from the positive x-axis.
-
     Args:
-        ang (float): The angle in degrees.
+        angle (int): The angle in degrees.
+        radius_offset (int, optional): The offset from the origin. Defaults to 1.
+        starting_position (list, optional): The position where the vector starts. Defaults to [0,0].
 
     Returns:
         list: A list containing the x and y components of the unit vector.
     """
     sanitized_angle = angle * (math.pi / 180) * -1
-    return [math.cos(sanitized_angle), math.sin(sanitized_angle)]
+    return [
+        starting_position[0] + math.cos(sanitized_angle) * radius_offset, 
+        starting_position[1] + math.sin(sanitized_angle) * radius_offset
+        ]
 
 def dist(p, q):
     

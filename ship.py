@@ -121,13 +121,21 @@ class Ship(Sprite):
                                 of the missile.
         """
         forward = angle_to_vector(self.angle)
-        missile_pos = [self.pos[0] + self.image_center[0] - (missile_info.center[0]),
-                        self.pos[1] + self.image_center[1] - (missile_info.center[1]) ]
+        centered_x, centered_y = self.pos_center
+        
+        centered_missile_pos = [centered_x - (missile_info.center[0]),
+                        centered_y - (missile_info.center[1]) ]
+        
+        adjusted_missile_pos = angle_to_vector(
+            self.angle, 
+            int(self.image_size[0] * .5), 
+            centered_missile_pos
+        )
 
         missile_vel = [
             self.vel[0] + 6 * forward[0],
             self.vel[1] + 6 * forward[1]
             ]
-        return Sprite_Pos_Details(position=missile_pos, velocity=missile_vel, angle=self.angle, angle_velocity=0)
+        return Sprite_Pos_Details(position=adjusted_missile_pos, velocity=missile_vel, angle=self.angle, angle_velocity=0)
     
    
