@@ -7,17 +7,15 @@ from sprite import Sprite
 from ship import Ship
 from utils import *
 from constants import WIDTH, HEIGHT
-
-
 import asyncio
 
+# TODO: LOOK INTO HOW TO FIX THESE IMPORTS
 pygame.init()
 frame = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
 from assets import *
 
 SPAWN_ROCK_EVENT = pygame.USEREVENT + 1
-pygame.time.set_timer(SPAWN_ROCK_EVENT, 2000)
 
 class AsteroidsGame:
     def __init__(self):
@@ -38,10 +36,6 @@ class AsteroidsGame:
         self.rock_group: set[Sprite] = set()
         self.missile_group: set[Sprite] = set()
         self.explosion_group: set[Sprite] = set()
-
-        # Set up the rock spawning timer
-        SPAWN_ROCK_EVENT = pygame.USEREVENT + 1
-        pygame.time.set_timer(SPAWN_ROCK_EVENT, 2000)
 
     def handle_keydown(self, event):
         if event.key == pygame.K_LEFT:
@@ -73,6 +67,8 @@ class AsteroidsGame:
                 self.lives = 3
                 self.score = 0
                 pygame.mixer.music.play(loops=-1, fade_ms=500)
+                # Start up the rock spawning timer
+                pygame.time.set_timer(SPAWN_ROCK_EVENT, 2000)
 
     def draw(self):
         self.time += 1
@@ -104,10 +100,13 @@ class AsteroidsGame:
                             ((WIDTH - splash_info.get_size()[0]) * .5,
                              (HEIGHT - splash_info.get_size()[1]) * .5))
 
-        if self.lives == 0:
+        if self.lives == 0 and self.started:
             self.started = False
             self.rock_group = set()
             pygame.mixer.music.fadeout(1500)
+
+            # Stop up the rock spawning timer
+            pygame.time.set_timer(SPAWN_ROCK_EVENT, 0)
 
     def process_sprite_group(self, the_set: set[Sprite]):
         for the_object in the_set.copy():
@@ -153,7 +152,7 @@ class AsteroidsGame:
                     self.handle_keydown(event)
                 elif event.type == pygame.KEYUP:
                     self.handle_keyup(event)
-                elif event.type == SPAWN_ROCK_EVENT and self.started:
+                elif event.type == SPAWN_ROCK_EVENT:
                     self.rock_spawner()
                 elif event.type == pygame.MOUSEBUTTONUP:
                     pos = pygame.mouse.get_pos()
