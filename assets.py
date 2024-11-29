@@ -7,7 +7,7 @@ from constants import WIDTH, HEIGHT
 # debris images - debris1_brown.png, debris2_brown.png, debris3_brown.png, debris4_brown.png
 #                 debris1_blue.png, debris2_blue.png, debris3_blue.png, debris4_blue.png, debris_blend.png
 debris_info = ImageInfo([320, 240], [640, 480])
-debris_image = pygame.image.load("images/debris2_blue.png")
+debris_image = pygame.image.load("images/debris2_blue.png").convert_alpha()
 debris_image = pygame.transform.scale(debris_image, (WIDTH, HEIGHT))
 
 
