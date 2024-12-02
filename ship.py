@@ -66,11 +66,11 @@ class Ship(Sprite):
         # update velocity
         if self.thrust:
             acc = angle_to_vector(self.angle)
-            self.vel[0] += acc[0] * .1
-            self.vel[1] += acc[1] * .1
+            self.vel[0] += acc[0] * SHIP_THRUST_MULTIPLIER
+            self.vel[1] += acc[1] * SHIP_THRUST_MULTIPLIER
             
-        self.vel[0] *= .98
-        self.vel[1] *= .98
+        self.vel[0] *= SHIP_VELOCITY_MULTIPLIER
+        self.vel[1] *= SHIP_VELOCITY_MULTIPLIER
         return False
 
     def set_thrust(self, on: bool, sound: mixer.Sound) -> None:
@@ -87,9 +87,9 @@ class Ship(Sprite):
         self.thrust = on
         self.force_redraw = True
         if on:
-            sound.play(fade_ms=500)
+            sound.play(fade_ms=SHIP_THRUST_FADE_IN_TIME)
         else:
-            sound.fadeout(1000)
+            sound.fadeout(SHIP_THRUST_FADE_OUT_TIME)
        
     def increment_angle_vel(self) -> None:
         """
@@ -97,7 +97,7 @@ class Ship(Sprite):
 
         This method is called when the ship is rotating clockwise.
         """
-        self.angle_vel -= 2
+        self.angle_vel -= SHIP_TURN_SPEED
         
     def decrement_angle_vel(self) -> None:
         """
@@ -105,7 +105,7 @@ class Ship(Sprite):
 
         This method is called when the ship is rotating counterclockwise.
         """
-        self.angle_vel += 2
+        self.angle_vel += SHIP_TURN_SPEED
         
     def shoot(self, missile_info: ImageInfo) -> Sprite_Pos_Details:
         """
@@ -133,8 +133,8 @@ class Ship(Sprite):
         )
 
         missile_vel = [
-            self.vel[0] + 6 * forward[0],
-            self.vel[1] + 6 * forward[1]
+            self.vel[0] + MISSILE_SPEED * forward[0],
+            self.vel[1] + MISSILE_SPEED * forward[1]
             ]
         return Sprite_Pos_Details(position=adjusted_missile_pos, velocity=missile_vel, angle=self.angle, angle_velocity=0)
     

@@ -6,7 +6,7 @@ from pygame import Surface
 from sprite import Sprite
 from ship import Ship
 from utils import *
-from constants import WIDTH, HEIGHT
+from constants import *
 import asyncio
 
 # TODO: LOOK INTO HOW TO FIX THESE IMPORTS
@@ -23,8 +23,8 @@ class AsteroidsGame:
         self.clock = pygame.time.Clock()
         
         # Game state variables
-        self.score = 0
-        self.lives = 3
+        self.score = INITIAL_SCORE
+        self.lives = INITIAL_LIVES
         self.time = 0
         self.started = False
 
@@ -34,9 +34,13 @@ class AsteroidsGame:
         
         # Load assets
         pygame.mixer.music.load(soundtrack_path)
+
+        ship_position = [int(WIDTH * .5), int(HEIGHT * .5)]
+        ship_velocity = [0.0, 0.0]
+        ship_angle = 0
         
         # Initialize ship and groups
-        self.my_ship = Ship([int(WIDTH * .5), int(HEIGHT * .5)], [0.0, 0.0], 0, ship_image_inactive, ship_image_active, ship_info)
+        self.my_ship = Ship(ship_position, ship_velocity, ship_angle, ship_image_inactive, ship_image_active, ship_info)
         self.rock_group: set[Sprite] = set()
         self.missile_group: set[Sprite] = set()
         self.explosion_group: set[Sprite] = set()
@@ -68,17 +72,17 @@ class AsteroidsGame:
             inheight = (center[1] - size[1] / 2) < pos[1] < (center[1] + size[1] / 2)
             if inwidth and inheight:
                 self.started = True
-                self.lives = 3
-                self.score = 0
-                pygame.mixer.music.play(loops=-1, fade_ms=500)
+                self.lives = INITIAL_LIVES
+                self.score = INITIAL_SCORE
+                pygame.mixer.music.play(loops=-1, fade_ms=SOUNDTRACK_FADE_IN_TIME)
                 # Start up the rock spawning timer
-                pygame.time.set_timer(SPAWN_ROCK_EVENT, 2000)
+                pygame.time.set_timer(SPAWN_ROCK_EVENT, SPAWN_ROCK_EVENT_INTERVAL)
 
     def update(self):
 
         self.time += 1
         # Update display offset for debris based on time and width
-        self.wtime = (self.time * .25) % WIDTH
+        self.wtime = (self.time * DEBRIS_SCROLL_SPEED) % WIDTH
 
         self.my_ship.update()
 
@@ -90,7 +94,7 @@ class AsteroidsGame:
         if self.lives == 0 and self.started:
             self.started = False
             self.rock_group = set()
-            pygame.mixer.music.fadeout(1500)
+            pygame.mixer.music.fadeout(SOUNDTRACK_FADE_OUT_TIME)
 
             # Stop up the rock spawning timer
             pygame.time.set_timer(SPAWN_ROCK_EVENT, 0)
@@ -128,16 +132,16 @@ class AsteroidsGame:
             if the_object.update():
                 the_set.discard(the_object)
 
-    def rock_spawner(self):
-        if len(self.rock_group) <= 2:
+    def asteroid_spawner(self):
+        if len(self.rock_group) <= ASTEROID_SPAWN_MIN_COUNT:
             rock_pos = [random.randrange(0, WIDTH), random.randrange(0, HEIGHT)]
             rock_vel = [
-                random.random() * .6 - .3,
-                random.random() * .6 - .3
+                random.random() * ASTEROID_VELOCITY_MULTIPLIER - ASTEROID_VELOCITY_ADJUSTMENT,
+                random.random() * ASTEROID_VELOCITY_MULTIPLIER - ASTEROID_VELOCITY_ADJUSTMENT
             ]
-            rock_acc_vel = random.random() * .2 - .1
+            rock_acc_vel = random.random() * ASTEROID_ACC_MULTIPLIER - ASTEROID_ACC_ADJUSTMENT
             new_rock = Sprite(rock_pos, rock_vel, 0, rock_acc_vel, asteroid_image.subsurface((0, 0, *asteroid_image.get_size())), asteroid_info)
-            if dist(new_rock.pos, self.my_ship.pos) > 100:
+            if dist(new_rock.pos, self.my_ship.pos) > ASTEROID_SPAWN_MIN_DISTANCE:
                 self.rock_group.add(new_rock)
 
     def group_collide(self, group: Set[Sprite], other_object: Sprite):
@@ -150,12 +154,12 @@ class AsteroidsGame:
         return False
 
     def rock_missile_group_collide(self):
-        number = 0
+        collisions_count = 0
         for rock in set(self.rock_group):
             if self.group_collide(self.missile_group, rock):
                 self.rock_group.discard(rock)
-                number += 1
-        return number
+                collisions_count += 1
+        return collisions_count
 
     async def run(self):
         while True:
@@ -167,7 +171,7 @@ class AsteroidsGame:
                 elif event.type == pygame.KEYUP:
                     self.handle_keyup(event)
                 elif event.type == SPAWN_ROCK_EVENT:
-                    self.rock_spawner()
+                    self.asteroid_spawner()
                 elif event.type == pygame.MOUSEBUTTONUP:
                     pos = pygame.mouse.get_pos()
                     self.handle_mouseclick(pos)
@@ -175,7 +179,7 @@ class AsteroidsGame:
             self.update()
             self.draw()
 
-            self.clock.tick(60)
+            self.clock.tick(FPS)
             pygame.display.update()
 
             await asyncio.sleep(0)
