@@ -11,7 +11,7 @@ import asyncio
 
 # TODO: LOOK INTO HOW TO FIX THESE IMPORTS
 pygame.init()
-frame = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
 
 from assets import *
 
@@ -19,7 +19,7 @@ SPAWN_ROCK_EVENT = pygame.USEREVENT + 1
 
 class AsteroidsGame:
     def __init__(self):
-        self.frame: Surface = frame
+        self.screen: Surface = screen
         self.clock = pygame.time.Clock()
         
         # Game state variables
@@ -27,6 +27,10 @@ class AsteroidsGame:
         self.lives = 3
         self.time = 0
         self.started = False
+
+        # Display timers
+        self.time = 0
+        self.wtime = 0
         
         # Load assets
         pygame.mixer.music.load(soundtrack_path)
@@ -70,35 +74,18 @@ class AsteroidsGame:
                 # Start up the rock spawning timer
                 pygame.time.set_timer(SPAWN_ROCK_EVENT, 2000)
 
-    def draw(self):
-        self.time += 1
-        wtime = (self.time * .25) % WIDTH
-        self.frame.blit(nebula_image, (0, 0))
-        self.frame.blit(debris_image, (wtime - WIDTH, 0))
-        self.frame.blit(debris_image, (wtime, 0))
+    def update(self):
 
-        text = pygame.font.SysFont("arial", 22)
-        self.frame.blit(text.render('Lives', True, (255, 255, 255)), (50, 50))
-        self.frame.blit(text.render("Score", True, (255, 255, 255)), (680, 50))
-        self.frame.blit(text.render(str(self.lives), True, (255, 255, 255)), (50, 80))
-        self.frame.blit(text.render(str(self.score), True, (255, 255, 255)), (680, 80))
+        self.time += 1
+        # Update display offset for debris based on time and width
+        self.wtime = (self.time * .25) % WIDTH
 
         self.my_ship.update()
-        self.frame.blit(*self.my_ship.draw())
-
-        self.process_sprite_group(self.rock_group)
-        self.process_sprite_group(self.missile_group)
-        self.process_sprite_group(self.explosion_group)
-
-        self.score += self.rock_missile_group_collide()
 
         if self.group_collide(self.rock_group, self.my_ship):
             self.lives -= 1
 
-        if not self.started:
-            self.frame.blit(splash_image,
-                            ((WIDTH - splash_info.get_size()[0]) * .5,
-                             (HEIGHT - splash_info.get_size()[1]) * .5))
+        
 
         if self.lives == 0 and self.started:
             self.started = False
@@ -107,10 +94,37 @@ class AsteroidsGame:
 
             # Stop up the rock spawning timer
             pygame.time.set_timer(SPAWN_ROCK_EVENT, 0)
+        
+        self.score += self.rock_missile_group_collide()
+
+    def draw(self):
+        
+        self.screen.blit(nebula_image, (0, 0)) 
+        self.screen.blit(debris_image, (self.wtime - WIDTH, 0)) # Debris offset image
+        self.screen.blit(debris_image, (self.wtime, 0)) # Debris image
+
+        text = pygame.font.SysFont("arial", 22)
+        self.screen.blit(text.render('Lives', True, (255, 255, 255)), (50, 50))
+        self.screen.blit(text.render("Score", True, (255, 255, 255)), (680, 50))
+        self.screen.blit(text.render(str(self.lives), True, (255, 255, 255)), (50, 80))
+        self.screen.blit(text.render(str(self.score), True, (255, 255, 255)), (680, 80))
+
+        
+        self.screen.blit(*self.my_ship.draw())
+
+        self.process_sprite_group(self.rock_group)
+        self.process_sprite_group(self.missile_group)
+        self.process_sprite_group(self.explosion_group)
+
+        if not self.started:
+            self.screen.blit(splash_image,
+                            ((WIDTH - splash_info.get_size()[0]) * .5,
+                             (HEIGHT - splash_info.get_size()[1]) * .5))
+
 
     def process_sprite_group(self, the_set: set[Sprite]):
         for the_object in the_set.copy():
-            self.frame.blit(*the_object.draw())
+            self.screen.blit(*the_object.draw())
             if the_object.update():
                 the_set.discard(the_object)
 
@@ -121,8 +135,8 @@ class AsteroidsGame:
                 random.random() * .6 - .3,
                 random.random() * .6 - .3
             ]
-            rock_avel = random.random() * .2 - .1
-            new_rock = Sprite(rock_pos, rock_vel, 0, rock_avel, asteroid_image.subsurface((0, 0, *asteroid_image.get_size())), asteroid_info)
+            rock_acc_vel = random.random() * .2 - .1
+            new_rock = Sprite(rock_pos, rock_vel, 0, rock_acc_vel, asteroid_image.subsurface((0, 0, *asteroid_image.get_size())), asteroid_info)
             if dist(new_rock.pos, self.my_ship.pos) > 100:
                 self.rock_group.add(new_rock)
 
@@ -158,6 +172,7 @@ class AsteroidsGame:
                     pos = pygame.mouse.get_pos()
                     self.handle_mouseclick(pos)
 
+            self.update()
             self.draw()
 
             self.clock.tick(60)
