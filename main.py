@@ -10,10 +10,11 @@ from constants import *
 import asyncio
 
 # TODO: LOOK INTO HOW TO FIX THESE IMPORTS
-pygame.init()
-screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-
-from assets import *
+if __name__ == "__main__":
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
+    text = pygame.font.SysFont("arial", 22)
+    from assets import *
 
 SPAWN_ROCK_EVENT = pygame.USEREVENT + 1
 
@@ -101,24 +102,39 @@ class AsteroidsGame:
         
         self.score += self.rock_missile_group_collide()
 
-    def draw(self):
+    def process_rock_group(self):
+        self.process_sprite_group(self.rock_group)
+    
+    def process_missile_group(self):
+        self.process_sprite_group(self.missile_group)
+    
+    def process_explosion_group(self):
+        self.process_sprite_group(self.explosion_group)
+
+    def draw_background(self):
         
         self.screen.blit(nebula_image, (0, 0)) 
         self.screen.blit(debris_image, (self.wtime - WIDTH, 0)) # Debris offset image
         self.screen.blit(debris_image, (self.wtime, 0)) # Debris image
 
-        text = pygame.font.SysFont("arial", 22)
+    def draw_scores(self):
         self.screen.blit(text.render('Lives', True, (255, 255, 255)), (50, 50))
         self.screen.blit(text.render("Score", True, (255, 255, 255)), (680, 50))
         self.screen.blit(text.render(str(self.lives), True, (255, 255, 255)), (50, 80))
         self.screen.blit(text.render(str(self.score), True, (255, 255, 255)), (680, 80))
 
-        
+    def draw_ship(self):
         self.screen.blit(*self.my_ship.draw())
 
-        self.process_sprite_group(self.rock_group)
-        self.process_sprite_group(self.missile_group)
-        self.process_sprite_group(self.explosion_group)
+    def draw(self):
+
+        self.draw_background()
+        self.draw_scores()
+        self.draw_ship()
+
+        self.process_rock_group()
+        self.process_missile_group()
+        self.process_explosion_group()
 
         if not self.started:
             self.screen.blit(splash_image,
